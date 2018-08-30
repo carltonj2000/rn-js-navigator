@@ -1,5 +1,11 @@
 import React, { Component } from "react";
-import { View, StyleSheet, Animated, Dimensions } from "react-native";
+import {
+  View,
+  StyleSheet,
+  Animated,
+  Dimensions,
+  PanResponder
+} from "react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -36,6 +42,36 @@ export class Navigator extends Component {
     this.state = { sceneConfig, stack: [sceneConfig[initialSceneName]] };
   }
   _animatedValue = new Animated.Value(0);
+  _panResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: (evt, gestureState) => {
+      const isFirstScreen = this.state.stack.length === 1;
+      const isFarLef = evt.nativeEvent.pageX < Math.floor(width * 0.25);
+      if (!isFirstScreen && isFarLef) return true;
+      else return false;
+    },
+    onPanResponderMove: (evt, gestureState) => {
+      this._animatedValue.setValue(gestureState.moveX);
+    },
+    onPanResponderTerminationRequest: (evt, gestureState) => true,
+    onPanResponderRelease: (evt, gestureState) => {
+      if (Math.floor(gestureState.moveX) >= (width * 3) / 4) {
+        this.handlePop();
+      } else {
+        Animated.timing(this._animatedValue, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true
+        }).start();
+      }
+    },
+    onPanResponderTerminate: (evt, gestureState) => {
+      Animated.timing(this._animatedValue, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true
+      }).start();
+    }
+  });
   handlePush = sceneName =>
     this.setState(
       state => ({
@@ -68,7 +104,7 @@ export class Navigator extends Component {
 
   render() {
     return (
-      <View style={styles.container}>
+      <View style={styles.container} {...this._panResponder.panHandlers}>
         {this.state.stack.map(({ component: CurrentScene, key }, index) => (
           <Animated.View
             style={
